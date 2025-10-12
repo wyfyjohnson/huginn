@@ -41,7 +41,7 @@ Displays your system stats with distro-specific logos and a clean, colorful inte
     
 2.  **Build and install**:
     ```bash
-    git clone [https://codeberg.org/wyfy/huginn.git](https://codeberg.org/wyfy/huginn.git)
+    git clone https://codeberg.org/wyfy/huginn.git
     cd huginn
     cargo build --release
     sudo cp target/release/huginn /usr/local/bin/
