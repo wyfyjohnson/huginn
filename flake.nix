@@ -32,7 +32,7 @@
               pkg-config
             ];
             buildInputs = with pkgs; [
-              libsvg
+              librsvg
               libsixel
             ];
           };
