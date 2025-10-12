@@ -50,7 +50,7 @@
           ];
 
           shellHook = ''
-            mkdir -p $HOME/.config/huginn/logos
+            mkdir -p $HOME/.local/share/huginn/logos
 
             if [ -d "${self}/logos" ]; then
                cp -r ${self}/logos/* $HOME/.local/share/huginn/logos/
