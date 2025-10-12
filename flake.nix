@@ -26,7 +26,14 @@
               extensions = ["rust-src" "rust-analyzer"];
             })
             rustfmt
+            imagemagick
+            librsvg
+            libsixel
           ];
+
+          shellHook = ''
+            mkdir -p $HOME/.config/huginn/logos
+          '';
         };
       }
     );

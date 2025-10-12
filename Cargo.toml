@@ -1,6 +1,16 @@
 [package]
 name = "huginn"
 version = "0.1.0"
-edition = "2024"
+edition = "2025"
 
 [dependencies]
+crossterm = "0.28"
+sysinfo = "0.31"
+libmacchina = "7"
+hostname = "0.4"
+which = "6"
+image = "0.25"
+resvg = "0.44"
+tiny-skia = "0.11"
+usvg = "0.44"
+viuer = "0.8"
