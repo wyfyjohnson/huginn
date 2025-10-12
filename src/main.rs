@@ -283,8 +283,27 @@ fn get_storage_used() -> String {
 }
 
 fn get_terminal() -> String {
+    if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
+        return match term_program.to_lowercase().as_str() {
+            "ghostty" => "Ghostty".to_string(),
+            "kitty" => "Kitty".to_string(),
+            "wezterm" => "Wezterm".to_string(),
+            "alacritty" => "Alacritty".to_string(),
+            "foot" => "󰽒".to_string(),
+            _ => term_program,
+        };
+    }
+
+    // Fallback to libmacchina detection
     let general = GeneralReadout::new();
-    general.terminal().unwrap_or_else(|_| "Unknown".to_string())
+    let term = general.terminal().unwrap_or_else(|_| "Unknown".to_string());
+
+    // Clean up them names
+    match term.as_str() {
+        t if t.contains("ghostty") => "Ghostty".to_string(),
+        t if t.contains("kitty") => "meow".to_string(),
+        _ => term,
+    }
 }
 
 fn get_shell() -> String {
