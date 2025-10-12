@@ -146,6 +146,7 @@ fn get_logo_path(distro: &str) -> PathBuf {
         d if d.contains("fedora") => "fedora.svg",
         d if d.contains("debian") => "debian.svg",
         d if d.contains("manjaro") => "manjaro.svg",
+        d if d.contains("garuda") => "garuda.svg",
         d if d.contains("endeavour") => "endeavouros.svg",
         _ => "linux.svg",
     };
