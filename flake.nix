@@ -33,6 +33,11 @@
 
           shellHook = ''
             mkdir -p $HOME/.config/huginn/logos
+
+            if [ -d "${self}/logos" ]; then
+               echo "Installing distro logos..."
+               cp -r ${self}/logos/* $HOME/.config/huginn/logos/
+            fi
           '';
         };
       }
