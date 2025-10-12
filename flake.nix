@@ -28,6 +28,13 @@
             cargoLock = {
               lockFile = ./Cargo.lock;
             };
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+            ];
+            buildInputs = with pkgs; [
+              libsvg
+              libsixel
+            ];
           };
           huginn = self.packages.${system}.default;
         };
