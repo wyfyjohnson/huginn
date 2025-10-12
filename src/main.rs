@@ -44,7 +44,7 @@ fn main() -> io::Result<()> {
     let disk_usage = get_disk_usage();
 
     // Print colorbar
-    println!("\n            {}", get_colorbar());
+    println!("\n                   {}", get_colorbar());
     println!();
 
     // Greetings
@@ -61,54 +61,43 @@ fn main() -> io::Result<()> {
     println!();
 
     // System info
+    println!("                   distro {} {}", "•".green(), distro);
+    println!("                      age {} {}", "•".green(), age_val);
     println!(
-        "            {}         distro {} {}",
-        "".yellow(),
-        "•".green(),
-        distro
-    );
-    println!(
-        "            {}            age {} {}",
-        "".yellow(),
-        "•".green(),
-        age_val
-    );
-    println!(
-        "            {}         kernel {} {}",
-        "".yellow(),
+        "                   kernel {} {}",
         "•".green(),
         System::kernel_version().unwrap_or_default()
     );
     println!(
-        "            {}       packages {} {}",
-        "".yellow(),
+        "                 packages {} {}",
         "•".green(),
         package_count
     );
-    println!(
-        "            {}          shell {} {}",
-        "".yellow(),
-        "•".green(),
-        get_shell()
-    );
-    println!(
-        "            {}           term {} {}",
-        "".yellow(),
-        "•".green(),
-        term
-    );
-    println!(
-        "            {}             wm {} {}",
-        "".yellow(),
-        "•".green(),
-        wm
-    );
+    println!("                    shell {} {}", "•".green(), get_shell());
+    println!("                     term {} {}", "•".green(), term);
+    println!("                       wm {} {}", "•".green(), wm);
     println!();
 
     // Progress bars
-    println!("                {}", format_stat("cpu", cpu_usage));
-    println!("                {}", format_stat("ram", ram_usage));
-    println!("                {}", format_stat("disk", disk_usage));
+    println!(
+        "                      {} {: >2}% {}",
+        "cpu".green(),
+        cpu_usage,
+        draw_progress(cpu_usage, 14)
+    );
+    println!(
+        "                      {} {: >2}% {}",
+        "ram".green(),
+        ram_usage,
+        draw_progress(ram_usage, 14)
+    );
+    println!(
+        "                     {} {: >2}% {}",
+        "disk".green(),
+        disk_usage,
+        draw_progress(disk_usage, 14)
+    );
+
     // Wait for input
     // wait_for_keypress();
     Ok(())
@@ -121,9 +110,9 @@ fn draw_progress(percentage: i32, size: usize) -> String {
     format!("{}{}", full.magenta(), empty.white())
 }
 
-fn format_stat(name: &str, value: i32) -> String {
-    format!("{} {}% {}", name.green(), value, draw_progress(value, 14))
-}
+// fn format_stat(name: &str, value: i32) -> String {
+//     format!("{} {}% {}", name.green(), value, draw_progress(value, 14))
+// }
 
 fn get_colorbar() -> String {
     format!(
@@ -157,20 +146,20 @@ fn get_logo_path(distro: &str) -> PathBuf {
 
     let logo_name = match distro.to_lowercase().as_str() {
         d if d.contains("arch") => "arch.svg",
-        d if d.contains("guix") => "guix.svg",
+        d if d.contains("debian") => "debian.svg",
+        d if d.contains("endeavour") => "endeavouros.svg",
+        d if d.contains("fedora") => "fedora.svg",
+        d if d.contains("garuda") => "garuda.svg",
         d if d.contains("gentoo") => "gentoo.svg",
+        d if d.contains("guix") => "guix.svg",
+        d if d.contains("lmde") => "lmde.svg",
+        d if d.contains("manjaro") => "manjaro.svg",
+        d if d.contains("mint") => "mint.svg",
+        d if d.contains("nixos") => "nixos.svg",
         d if d.contains("obsidian") => "obsidian.svg",
         d if d.contains("popos") => "popos.svg",
-        d if d.contains("venom") => "venom.svg",
-        d if d.contains("mint") => "mint.svg",
-        d if d.contains("lmde") => "lmde.svg",
-        d if d.contains("nixos") => "nixos.svg",
         d if d.contains("ubuntu") => "ubuntu.svg",
-        d if d.contains("fedora") => "fedora.svg",
-        d if d.contains("debian") => "debian.svg",
-        d if d.contains("manjaro") => "manjaro.svg",
-        d if d.contains("garuda") => "garuda.svg",
-        d if d.contains("endeavour") => "endeavouros.svg",
+        d if d.contains("venom") => "venom.svg",
         _ => "linux.svg",
     };
 
@@ -206,7 +195,7 @@ fn display_logo(distro: &str) {
     let conf = Config {
         width: Some(20),
         height: Some(10),
-        x: 17,
+        x: 22,
         y: 1,
         absolute_offset: false,
         transparent: true,
@@ -366,17 +355,17 @@ fn get_disk_usage() -> i32 {
         .unwrap_or(0)
 }
 
-fn wait_for_keypress() {
-    use crossterm::event::{read, Event, KeyCode};
-    use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+// fn wait_for_keypress() {
+//     use crossterm::event::{read, Event, KeyCode};
+//     use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
-    let _ = enable_raw_mode();
-    loop {
-        if let Ok(Event::Key(key)) = read() {
-            if matches!(key.code, KeyCode::Char(' ') | KeyCode::Enter | KeyCode::Esc) {
-                break;
-            }
-        }
-    }
-    let _ = disable_raw_mode();
-}
+//     let _ = enable_raw_mode();
+//     loop {
+//         if let Ok(Event::Key(key)) = read() {
+//             if matches!(key.code, KeyCode::Char(' ') | KeyCode::Enter | KeyCode::Esc) {
+//                 break;
+//             }
+//         }
+//     }
+//     let _ = disable_raw_mode();
+// }
