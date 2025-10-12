@@ -59,7 +59,6 @@ Huginn requires you to add SVG logos to display them.
 2.  **Add Logos**:
     -   You **must** add a generic `linux.svg` to serve as a fallback.
     -   Add logos for your specific distributions, like `nixos.svg`, `arch.svg`, etc. The filename must be the lowercase name of the distro.
-    -   You can find high-quality logos at [Simple Icons](https://simpleicons.org/) or official distro websites.
 
 ## Usage/Configuration
 Simply run `huginn` in your terminal. There is currently no configuration file or command-line flags.
