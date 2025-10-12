@@ -19,13 +19,13 @@ Displays your system stats with distro-specific logos and a clean, colorful inte
 
 1.  **Run without installing**:
     ```bash
-    nix run [https://codeberg.org/wyfy/huginn](https://codeberg.org/wyfy/huginn)
+    nix run 'git+https://codeberg.org/wyfy/huginn'
     ```
     *(Note: This will show a "No Logo found" message. See the Adding Logos section.)*
 
 2.  **Install from source**:
     ```bash
-    git clone [https://codeberg.org/wyfy/huginn.git](https://codeberg.org/wyfy/huginn.git)
+    git clone https://codeberg.org/wyfy/huginn.git
     cd huginn
     nix develop
     cargo build --release

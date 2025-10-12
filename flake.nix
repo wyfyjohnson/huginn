@@ -20,6 +20,24 @@
           inherit system overlays;
         };
       in {
+        packages = {
+          default = pkgs.rustPlatform.buildRustPackage {
+            pname = "huginn";
+            version = "0.1.0";
+            src = ./.;
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+            };
+          };
+          huginn = self.packages.${system}.default;
+        };
+        apps = {
+          default = {
+            type = "app";
+            program = "${self.packages.${system}.default}/bin/huginn";
+          };
+          huginn = self.apps.${system}.default;
+        };
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             (rust-bin.stable.latest.default.override {
