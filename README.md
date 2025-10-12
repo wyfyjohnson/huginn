@@ -19,7 +19,7 @@ Displays your system stats with distro-specific logos and a clean, colorful inte
 
 1.  **Run without installing**:
     ```bash
-    nix run 'git+https://codeberg.org/wyfy/huginn'
+    nix run git+https://codeberg.org/wyfy/huginn
     ```
     *(Note: This will show a "No Logo found" message. See the Adding Logos section.)*
 
