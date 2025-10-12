@@ -1,17 +1,18 @@
 use crossterm::{
     cursor, execute,
-    style::{Color, Print, ResetColor, SetForegroundColor, Stylize},
+    style::Stylize,
     terminal::{Clear, ClearType},
 };
 use libmacchina::{
-    traits::GeneralReadOut as _, traits::PackageReadOut as _, GeneralReadOut, PackageReadOut,
+    traits::{GeneralReadout as _, PackageReadout as _, ShellFormat, ShellKind},
+    GeneralReadout, PackageReadout,
 };
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
-use sysinfo::{CpuExt, DiskExt, System, SystemExt};
+use sysinfo::{Disks, System};
 use viuer::{print_from_file, Config};
 
 fn main() -> io::Result<()> {
@@ -32,63 +33,82 @@ fn main() -> io::Result<()> {
     let name = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
     let package_count = get_package_count();
     let wm = get_window_manager();
-    let storage = get_storage_used();
+    let _storage = get_storage_used();
     let term = get_terminal();
-    let uptime = format_uptime(sys.uptime());
+    let uptime = format_uptime(System::uptime());
     let age_val = get_system_age();
 
     // CPU, RAM, DISK usage
-    let cpu_usage = sys.global_cpu_info().cpu_usage() as i32;
+    let cpu_usage = sys.global_cpu_usage() as i32;
     let ram_usage = ((sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0) as i32;
-    let disk_usage = get_disk_usage(&mut sys);
+    let disk_usage = get_disk_usage();
 
     // Print colorbar
-    println!("\n    {}", get_colorbar());
+    println!("\n            {}", get_colorbar());
     println!();
 
     // Greetings
     println!(
         "                     {} {}",
-        "H!".bright_cyan(),
+        "H!".cyan(),
         name.green().bold()
     );
     println!(
         "                   {} {}",
-        "up".bright_yellow(),
+        "up".yellow(),
         uptime.cyan().bold()
     );
     println!();
 
     // System info
-    println!("{}         distro {} {}", "".yellow(), "•".green(), distro);
-    println!("{}            age {} {}", "".yellow(), "•".green(), age_val);
     println!(
-        "{}         kernel {} {}",
+        "            {}         distro {} {}",
         "".yellow(),
         "•".green(),
-        sys.kernel_version().unwrap_or_default()
+        distro
     );
     println!(
-        "{}       packages {} {}",
+        "            {}            age {} {}",
+        "".yellow(),
+        "•".green(),
+        age_val
+    );
+    println!(
+        "            {}         kernel {} {}",
+        "".yellow(),
+        "•".green(),
+        System::kernel_version().unwrap_or_default()
+    );
+    println!(
+        "            {}       packages {} {}",
         "".yellow(),
         "•".green(),
         package_count
     );
     println!(
-        "{}          shell {} {}",
+        "            {}          shell {} {}",
         "".yellow(),
         "•".green(),
         get_shell()
     );
-    println!("{}           term {} {}", "".yellow(), "•".green(), term);
-    println!("{}             wm {} {}", "".yellow(), "•".green(), wm);
+    println!(
+        "            {}           term {} {}",
+        "".yellow(),
+        "•".green(),
+        term
+    );
+    println!(
+        "            {}             wm {} {}",
+        "".yellow(),
+        "•".green(),
+        wm
+    );
     println!();
 
     // Progress bars
-    println!("        {}", format_stat("cpu", cpu_usage));
-    println!("        {}", format_stat("ram", ram_usage));
-    println!("       {}", format_stat("disk", disk_usage));
-
+    println!("                {}", format_stat("cpu", cpu_usage));
+    println!("                {}", format_stat("ram", ram_usage));
+    println!("               {}", format_stat("disk", disk_usage));
     // Wait for input
     wait_for_keypress();
 
@@ -108,29 +128,33 @@ fn format_stat(name: &str, value: i32) -> String {
 
 fn get_colorbar() -> String {
     format!(
-        "{}{}{}{}{}{}{}{}",
-        "░▒".red(),
-        "█▓▒░".on_red().bright_red(),
-        "█▓▒░".on_green().bright_green(),
-        "█▓▒░".on_yellow().bright_yellow(),
-        "█▓▒░".on_blue().bright_blue(),
-        "█▓▒░".on_magenta().bright_magenta(),
-        "█▓▒░".on_cyan().bright_cyan(),
-        "█▒░".on_white().bright_white()
+        "{}{}{}{}{}{}{}{}{}{}{}{}",
+        "██".dark_red(),
+        "██".red(),
+        "██".dark_yellow(),
+        "██".yellow(),
+        "██".dark_green(),
+        "██".green(),
+        "██".dark_cyan(),
+        "██".cyan(),
+        "██".dark_blue(),
+        "██".blue(),
+        "██".dark_magenta(),
+        "██".magenta(),
     )
 }
 
 fn get_distro() -> String {
-    let general = GeneralReadOut::new();
+    let general = GeneralReadout::new();
     general
         .distribution()
-        .unwrap_or_else(|| "Unknown".to_string())
+        .unwrap_or_else(|_| "Unknown".to_string())
 }
 
 fn get_logo_path(distro: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_default();
-    let config_dir =
-        std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
+    let data_dir =
+        std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home));
 
     let logo_name = match distro.to_lowercase().as_str() {
         d if d.contains("arch") => "arch.svg",
@@ -151,7 +175,7 @@ fn get_logo_path(distro: &str) -> PathBuf {
         _ => "linux.svg",
     };
 
-    PathBuf::from(format!("{}/huginn/logos/{}", config_dir, logo_name))
+    PathBuf::from(format!("{}/huginn/logos/{}", data_dir, logo_name))
 }
 
 fn svg_to_png_temp(svg_path: &PathBuf, width: u32, height: u32) -> Option<PathBuf> {
@@ -183,7 +207,7 @@ fn display_logo(distro: &str) {
     let conf = Config {
         width: Some(20),
         height: Some(10),
-        x: 2,
+        x: 25,
         y: 1,
         absolute_offset: false,
         transparent: true,
@@ -208,9 +232,13 @@ fn display_logo(distro: &str) {
 }
 
 fn get_package_count() -> String {
-    let packages = PackageReadOut::new();
-    if let Some(count) = packages.count_pkgs() {
-        return count.to_string();
+    let packages = PackageReadout::new();
+    let pkg_counts = packages.count_pkgs();
+
+    // count_pkgs() returns Vec<(PackageManager, usize)>
+    if !pkg_counts.is_empty() {
+        let total: usize = pkg_counts.iter().map(|(_, count)| count).sum();
+        return total.to_string();
     }
 
     let package_managers = [
@@ -223,7 +251,9 @@ fn get_package_count() -> String {
             let result = Command::new(manager).args(args).output();
             if let Ok(output) = result {
                 let count = String::from_utf8_lossy(&output.stdout).lines().count();
-                return count.to_string();
+                if count > 0 {
+                    return count.to_string();
+                }
             }
         }
     }
@@ -232,10 +262,10 @@ fn get_package_count() -> String {
 }
 
 fn get_window_manager() -> String {
-    let general = GeneralReadOut::new();
+    let general = GeneralReadout::new();
     general
         .window_manager()
-        .unwrap_or_else(|| "Unknown".to_string())
+        .unwrap_or_else(|_| "Unknown".to_string())
 }
 
 fn get_storage_used() -> String {
@@ -253,18 +283,15 @@ fn get_storage_used() -> String {
 }
 
 fn get_terminal() -> String {
-    let general = GeneralReadOut::new();
-    general.terminal().unwrap_or_else(|| "Unknown".to_string())
+    let general = GeneralReadout::new();
+    general.terminal().unwrap_or_else(|_| "Unknown".to_string())
 }
 
 fn get_shell() -> String {
-    let general = GeneralReadOut::new();
+    let general = GeneralReadout::new();
     general
-        .shell(
-            libmacchina::ShellFormat::Relative,
-            libmacchina::ShellKind::Default,
-        )
-        .unwrap_or_else(|| "Unknown".to_string())
+        .shell(ShellFormat::Relative, ShellKind::Default)
+        .unwrap_or_else(|_| "Unknown".to_string())
 }
 
 fn format_uptime(seconds: u64) -> String {
@@ -294,9 +321,10 @@ fn get_system_age() -> String {
     format!("{} days", days)
 }
 
-fn get_disk_usage(sys: &mut System) -> i32 {
-    sys.refresh_disks_list();
-    sys.disks()
+fn get_disk_usage() -> i32 {
+    let disks = Disks::new_with_refreshed_list();
+
+    disks
         .iter()
         .find(|d| d.mount_point().to_str() == Some("/"))
         .map(|d| {
@@ -315,7 +343,7 @@ fn wait_for_keypress() {
     let _ = enable_raw_mode();
     loop {
         if let Ok(Event::Key(key)) = read() {
-            if matches!(key.code, KeyCode::Enter | KeyCode::Char(_)) {
+            if matches!(key.code, KeyCode::Char(' ') | KeyCode::Enter | KeyCode::Esc) {
                 break;
             }
         }
