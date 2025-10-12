@@ -49,12 +49,12 @@ fn main() -> io::Result<()> {
 
     // Greetings
     println!(
-        "                     {} {}",
+        "                        {} {}",
         "H!".cyan(),
         name.green().bold()
     );
     println!(
-        "                   {} {}",
+        "                      {} {}",
         "up".yellow(),
         uptime.cyan().bold()
     );
@@ -108,10 +108,9 @@ fn main() -> io::Result<()> {
     // Progress bars
     println!("                {}", format_stat("cpu", cpu_usage));
     println!("                {}", format_stat("ram", ram_usage));
-    println!("               {}", format_stat("disk", disk_usage));
+    println!("                {}", format_stat("disk", disk_usage));
     // Wait for input
-    wait_for_keypress();
-
+    // wait_for_keypress();
     Ok(())
 }
 
@@ -207,7 +206,7 @@ fn display_logo(distro: &str) {
     let conf = Config {
         width: Some(20),
         height: Some(10),
-        x: 25,
+        x: 17,
         y: 1,
         absolute_offset: false,
         transparent: true,
@@ -218,11 +217,23 @@ fn display_logo(distro: &str) {
     if svg_path.exists() {
         if let Some(png_path) = svg_to_png_temp(&svg_path, 400, 400) {
             let _ = print_from_file(&png_path, &conf);
-            // Cleanup temp file
             let _ = std::fs::remove_file(png_path);
         }
     } else {
-        eprintln!("Logo not found: {:?}", svg_path);
+        let home = std::env::var("HOME").unwrap_or_default();
+        let data_dir =
+            std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home));
+        let fallback_path = PathBuf::from(format!("{}/huginn/logos/linux.svg", data_dir));
+
+        if fallback_path.exists() {
+            if let Some(png_path) = svg_to_png_temp(&fallback_path, 400, 400) {
+                let _ = print_from_file(&png_path, &conf);
+                let _ = std::fs::remove_file(png_path);
+            }
+        } else {
+            eprintln!("No logo found: {:?}", data_dir);
+            eprintln!("Place logos in: {}/huginn/logos", data_dir);
+        }
     }
 
     // Add spacing for content below image
