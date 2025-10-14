@@ -15,6 +15,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{Disks, System};
 use viuer::{print_from_file, Config};
 
+fn visual_width(s: &str) -> usize {
+    s.chars().filter(|c| !c.is_control()).count()
+}
+
 fn main() -> io::Result<()> {
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -27,7 +31,7 @@ fn main() -> io::Result<()> {
     let distro = get_distro();
 
     // Display logo
-    display_logo(&distro);
+    // display_logo(&distro);
 
     // Get system info
     let name = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
@@ -41,7 +45,7 @@ fn main() -> io::Result<()> {
 
     // Build the main info block
     let info_items = vec![
-        ("distro", distro),
+        ("distro", distro.clone()),
         ("age", age_val),
         ("kernel", kernel),
         ("packages", package_count),
@@ -52,73 +56,72 @@ fn main() -> io::Result<()> {
 
     let info_lines = format_system_info(info_items);
 
+    let first_line = &info_lines[0];
+    let dot_position = first_line.find('•').unwrap_or(20);
+
+    display_logo(&distro, dot_position);
+
     // CPU, RAM, DISK usage
     let cpu_usage = sys.global_cpu_usage() as i32;
     let ram_usage = ((sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0) as i32;
     let disk_usage = get_disk_usage();
 
-    // Print colorbar
-    println!("\n        {}", get_colorbar());
+    let colorbar = get_colorbar();
+    let colorbar_width = 24;
+    let colorbar_padding = dot_position.saturating_sub(colorbar_width / 2);
+    println!("\n{}{}", " ".repeat(colorbar_padding), colorbar);
     println!();
 
-    // Greetings
+    let greeting_text = format!("Hi! {}", name);
+    let greeting_width = greeting_text.len();
+    let greeting_padding = dot_position.saturating_sub(greeting_width / 2);
     println!(
-        "                    {} {}",
-        "H!".cyan(),
+        "{}{} {}",
+        " ".repeat(greeting_padding),
+        "Hi!".cyan(),
         name.green().bold()
     );
+
+    let uptime_text = format!("up {}", uptime);
+    let uptime_width = uptime_text.len();
+    let uptime_padding = dot_position.saturating_sub(uptime_width / 2);
     println!(
-        "                  {} {}",
+        "{}{} {}",
+        " ".repeat(uptime_padding),
         "up".yellow(),
         uptime.cyan().bold()
     );
     println!();
 
-    // System info
-    // println!("                   distro {} {}", "•".green(), distro);
-    // println!("                      age {} {}", "•".green(), age_val);
-    // println!(
-    //     "                   kernel {} {}",
-    //     "•".green(),
-    //     System::kernel_version().unwrap_or_default()
-    // );
-    // println!(
-    //     "                 packages {} {}",
-    //     "•".green(),
-    //     package_count
-    // );
-    // println!("                    shell {} {}", "•".green(), get_shell());
-    // println!("                     term {} {}", "•".green(), term);
-    // println!("                       wm {} {}", "•".green(), wm);
-    // println!();
-
     for line in info_lines {
-        println!("                   {}", line);
+        println!("{}", line);
     }
     println!();
 
     // Progress bars
+    let progress_padding = dot_position + 2;
     println!(
-        "             {} {}% {}",
+        "{}{}  {:>2 }% {}",
+        " ".repeat(progress_padding.saturating_sub(10)),
         "cpu".green(),
         cpu_usage,
         draw_progress(cpu_usage, 14)
     );
     println!(
-        "             {} {}% {}",
+        "{}{}  {:>2 }% {}",
+        " ".repeat(progress_padding.saturating_sub(10)),
         "ram".green(),
         ram_usage,
         draw_progress(ram_usage, 14)
     );
     println!(
-        "            {} {}% {}",
+        "{}{} {:>2 }% {}",
+        " ".repeat(progress_padding.saturating_sub(10)),
         "disk".green(),
         disk_usage,
         draw_progress(disk_usage, 14)
     );
 
-    // Wait for input
-    // wait_for_keypress();
     Ok(())
 }
 fn draw_progress(percentage: i32, size: usize) -> String {
@@ -149,7 +152,7 @@ fn format_system_info(items: Vec<(&str, String)>) -> Vec<String> {
         .map(|(label, value)| {
             format!(
                 "{} {: >width$} {} {}",
-                "".yellow(),
+                "                    ",
                 label,
                 "•".green(),
                 value,
@@ -158,10 +161,6 @@ fn format_system_info(items: Vec<(&str, String)>) -> Vec<String> {
         })
         .collect()
 }
-
-// fn format_stat(name: &str, value: i32) -> String {
-//     format!("{} {}% {}", name.green(), value, draw_progress(value, 14))
-// }
 
 fn get_colorbar() -> String {
     use crossterm::style::Stylize;
@@ -189,10 +188,7 @@ fn get_colorbar() -> String {
         };
     }
 
-    // First color
     add_colors!(first: dark_red);
-
-    // Middle colors
     add_colors!(middle: red);
     add_colors!(middle: dark_yellow);
     add_colors!(middle: yellow);
@@ -203,8 +199,6 @@ fn get_colorbar() -> String {
     add_colors!(middle: dark_blue);
     add_colors!(middle: blue);
     add_colors!(middle: dark_magenta);
-
-    // Last color
     add_colors!(last: magenta);
 
     bar
@@ -267,13 +261,15 @@ fn svg_to_png_temp(svg_path: &PathBuf, width: u32, height: u32) -> Option<PathBu
     Some(temp_png)
 }
 
-fn display_logo(distro: &str) {
+fn display_logo(distro: &str, dot_position: usize) {
     let svg_path = get_logo_path(distro);
+
+    let logo_x = (dot_position as u16).saturating_sub(10);
 
     let conf = Config {
         width: Some(20),
         height: Some(10),
-        x: 22,
+        x: logo_x,
         y: 1,
         absolute_offset: false,
         transparent: true,
@@ -432,18 +428,3 @@ fn get_disk_usage() -> i32 {
         })
         .unwrap_or(0)
 }
-
-// fn wait_for_keypress() {
-//     use crossterm::event::{read, Event, KeyCode};
-//     use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-
-//     let _ = enable_raw_mode();
-//     loop {
-//         if let Ok(Event::Key(key)) = read() {
-//             if matches!(key.code, KeyCode::Char(' ') | KeyCode::Enter | KeyCode::Esc) {
-//                 break;
-//             }
-//         }
-//     }
-//     let _ = disable_raw_mode();
-// }
