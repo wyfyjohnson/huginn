@@ -37,6 +37,20 @@ fn main() -> io::Result<()> {
     let term = get_terminal();
     let uptime = format_uptime(System::uptime());
     let age_val = get_system_age();
+    let kernel = System::kernel_version().unwrap_or_default();
+
+    // Build the main info block
+    let info_items = vec![
+        ("distro", distro),
+        ("age", age_val),
+        ("kernel", kernel),
+        ("packages", package_count),
+        ("shell", get_shell()),
+        ("term", term),
+        ("wm", wm),
+    ];
+
+    let info_lines = format_system_info(info_items);
 
     // CPU, RAM, DISK usage
     let cpu_usage = sys.global_cpu_usage() as i32;
@@ -44,55 +58,60 @@ fn main() -> io::Result<()> {
     let disk_usage = get_disk_usage();
 
     // Print colorbar
-    println!("\n                   {}", get_colorbar());
+    println!("\n        {}", get_colorbar());
     println!();
 
     // Greetings
     println!(
-        "                        {} {}",
+        "                    {} {}",
         "H!".cyan(),
         name.green().bold()
     );
     println!(
-        "                      {} {}",
+        "                  {} {}",
         "up".yellow(),
         uptime.cyan().bold()
     );
     println!();
 
     // System info
-    println!("                   distro {} {}", "•".green(), distro);
-    println!("                      age {} {}", "•".green(), age_val);
-    println!(
-        "                   kernel {} {}",
-        "•".green(),
-        System::kernel_version().unwrap_or_default()
-    );
-    println!(
-        "                 packages {} {}",
-        "•".green(),
-        package_count
-    );
-    println!("                    shell {} {}", "•".green(), get_shell());
-    println!("                     term {} {}", "•".green(), term);
-    println!("                       wm {} {}", "•".green(), wm);
+    // println!("                   distro {} {}", "•".green(), distro);
+    // println!("                      age {} {}", "•".green(), age_val);
+    // println!(
+    //     "                   kernel {} {}",
+    //     "•".green(),
+    //     System::kernel_version().unwrap_or_default()
+    // );
+    // println!(
+    //     "                 packages {} {}",
+    //     "•".green(),
+    //     package_count
+    // );
+    // println!("                    shell {} {}", "•".green(), get_shell());
+    // println!("                     term {} {}", "•".green(), term);
+    // println!("                       wm {} {}", "•".green(), wm);
+    // println!();
+
+    for line in info_lines {
+        println!("                   {}", line);
+    }
     println!();
 
     // Progress bars
     println!(
-        "                      {} {: >2}% {}",
+        "             {} {}% {}",
         "cpu".green(),
         cpu_usage,
         draw_progress(cpu_usage, 14)
     );
     println!(
-        "                      {} {: >2}% {}",
+        "             {} {}% {}",
         "ram".green(),
         ram_usage,
         draw_progress(ram_usage, 14)
     );
     println!(
-        "                     {} {: >2}% {}",
+        "            {} {}% {}",
         "disk".green(),
         disk_usage,
         draw_progress(disk_usage, 14)
@@ -102,12 +121,42 @@ fn main() -> io::Result<()> {
     // wait_for_keypress();
     Ok(())
 }
-
 fn draw_progress(percentage: i32, size: usize) -> String {
     let filled = (percentage * size as i32 / 100) as usize;
     let full = "━".repeat(filled);
     let empty = "━".repeat(size.saturating_sub(filled));
-    format!("{}{}", full.magenta(), empty.white())
+
+    let colored_full = match percentage {
+        90..=100 => full.dark_red(),
+        70..=89 => full.red(),
+        50..=69 => full.yellow(),
+        30..=49 => full.dark_green(),
+        _ => full.green(),
+    };
+
+    format!("{}{}", colored_full, empty.dark_grey())
+}
+
+fn format_system_info(items: Vec<(&str, String)>) -> Vec<String> {
+    let max_label_width = items
+        .iter()
+        .map(|(label, _)| label.len())
+        .max()
+        .unwrap_or(0);
+
+    items
+        .iter()
+        .map(|(label, value)| {
+            format!(
+                "{} {: >width$} {} {}",
+                "".yellow(),
+                label,
+                "•".green(),
+                value,
+                width = max_label_width
+            )
+        })
+        .collect()
 }
 
 // fn format_stat(name: &str, value: i32) -> String {
@@ -115,21 +164,50 @@ fn draw_progress(percentage: i32, size: usize) -> String {
 // }
 
 fn get_colorbar() -> String {
-    format!(
-        "{}{}{}{}{}{}{}{}{}{}{}{}",
-        "██".dark_red(),
-        "██".red(),
-        "██".dark_yellow(),
-        "██".yellow(),
-        "██".dark_green(),
-        "██".green(),
-        "██".dark_cyan(),
-        "██".cyan(),
-        "██".dark_blue(),
-        "██".blue(),
-        "██".dark_magenta(),
-        "██".magenta(),
-    )
+    use crossterm::style::Stylize;
+    let first_blocks = ["░", "▒"];
+    let middle_blocks = ["▓", "▒"];
+    let last_blocks = ["▒", "░"];
+    let mut bar = String::new();
+
+    // Helper macro to add colors with specific block pattern
+    macro_rules! add_colors {
+        (first: $color:ident) => {
+            for block in &first_blocks {
+                bar.push_str(&format!("{}", block.$color()));
+            }
+        };
+        (middle: $color:ident) => {
+            for block in &middle_blocks {
+                bar.push_str(&format!("{}", block.$color()));
+            }
+        };
+        (last: $color:ident) => {
+            for block in &last_blocks {
+                bar.push_str(&format!("{}", block.$color()));
+            }
+        };
+    }
+
+    // First color
+    add_colors!(first: dark_red);
+
+    // Middle colors
+    add_colors!(middle: red);
+    add_colors!(middle: dark_yellow);
+    add_colors!(middle: yellow);
+    add_colors!(middle: dark_green);
+    add_colors!(middle: green);
+    add_colors!(middle: dark_cyan);
+    add_colors!(middle: cyan);
+    add_colors!(middle: dark_blue);
+    add_colors!(middle: blue);
+    add_colors!(middle: dark_magenta);
+
+    // Last color
+    add_colors!(last: magenta);
+
+    bar
 }
 
 fn get_distro() -> String {
