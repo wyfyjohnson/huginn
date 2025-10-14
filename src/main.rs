@@ -1,3 +1,4 @@
+use clap::{Parser, Subcommand};
 use crossterm::{
     cursor, execute,
     style::Stylize,
@@ -15,11 +16,49 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{Disks, System};
 use viuer::{print_from_file, Config};
 
-fn visual_width(s: &str) -> usize {
-    s.chars().filter(|c| !c.is_control()).count()
+mod challenge;
+
+#[derive(Parser)]
+#[command(name = "huginn")]
+#[command(about = "A beautiful system information fetcher", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Run a challenge countdown
+    Challenge {
+        /// Number of years for the challenge
+        #[arg(short, long, default_value_t = 0)]
+        years: i64,
+
+        /// Number of months for the challenge
+        #[arg(short, long, default_value_t = 0)]
+        months: i64,
+    },
 }
 
 fn main() -> io::Result<()> {
+    let cli = Cli::parse();
+
+    // Handle subcommands
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Challenge { years, months } => {
+                challenge::run_challenge_countdown(years, months);
+                return Ok(());
+            }
+        }
+    }
+
+    // If no subcommand, run the normal fetch display
+    run_fetch()?;
+    Ok(())
+}
+
+fn run_fetch() -> io::Result<()> {
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -122,6 +161,7 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
+
 fn draw_progress(percentage: i32, size: usize) -> String {
     let filled = (percentage * size as i32 / 100) as usize;
     let full = "━".repeat(filled);
@@ -296,11 +336,6 @@ fn display_logo(distro: &str, dot_position: usize) {
             eprintln!("Place logos in: {}/huginn/logos", data_dir);
         }
     }
-
-    // Add spacing for content below image
-    for _ in 0..2 {
-        println!();
-    }
 }
 
 fn get_package_count() -> String {
@@ -334,6 +369,14 @@ fn get_package_count() -> String {
 }
 
 fn get_window_manager() -> String {
+    if let Ok(wm_env) = std::env::var("XDG_CURRENT_DESKTOP") {
+        return match wm_env.to_lowercase().as_str() {
+            "hyprland" => "Hyprland".to_string(),
+            "sway" => "Sway".to_string(),
+            _ => wm_env,
+        };
+    }
+
     let general = GeneralReadout::new();
     general
         .window_manager()
