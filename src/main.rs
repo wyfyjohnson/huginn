@@ -30,9 +30,6 @@ fn main() -> io::Result<()> {
     // Get distro first for logo selection
     let distro = get_distro();
 
-    // Display logo
-    // display_logo(&distro);
-
     // Get system info
     let name = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
     let package_count = get_package_count();
@@ -58,8 +55,9 @@ fn main() -> io::Result<()> {
 
     let first_line = &info_lines[0];
     let dot_position = first_line.find('•').unwrap_or(20);
+    let visual_center = dot_position.saturating_sub(10);
 
-    display_logo(&distro, dot_position);
+    display_logo(&distro, visual_center);
 
     // CPU, RAM, DISK usage
     let cpu_usage = sys.global_cpu_usage() as i32;
@@ -68,13 +66,13 @@ fn main() -> io::Result<()> {
 
     let colorbar = get_colorbar();
     let colorbar_width = 24;
-    let colorbar_padding = dot_position.saturating_sub(colorbar_width / 2);
+    let colorbar_padding = visual_center.saturating_sub(colorbar_width / 2);
     println!("\n{}{}", " ".repeat(colorbar_padding), colorbar);
     println!();
 
     let greeting_text = format!("Hi! {}", name);
     let greeting_width = greeting_text.len();
-    let greeting_padding = dot_position.saturating_sub(greeting_width / 2);
+    let greeting_padding = visual_center.saturating_sub(greeting_width / 2);
     println!(
         "{}{} {}",
         " ".repeat(greeting_padding),
@@ -84,7 +82,7 @@ fn main() -> io::Result<()> {
 
     let uptime_text = format!("up {}", uptime);
     let uptime_width = uptime_text.len();
-    let uptime_padding = dot_position.saturating_sub(uptime_width / 2);
+    let uptime_padding = visual_center.saturating_sub(uptime_width / 2);
     println!(
         "{}{} {}",
         " ".repeat(uptime_padding),
@@ -101,22 +99,22 @@ fn main() -> io::Result<()> {
     // Progress bars
     let progress_padding = dot_position + 2;
     println!(
-        "{}{}  {:>2 }% {}",
-        " ".repeat(progress_padding.saturating_sub(10)),
+        "{}{}  {:>2}% {}",
+        " ".repeat(progress_padding.saturating_sub(23)),
         "cpu".green(),
         cpu_usage,
         draw_progress(cpu_usage, 14)
     );
     println!(
-        "{}{}  {:>2 }% {}",
-        " ".repeat(progress_padding.saturating_sub(10)),
+        "{}{}  {:>2}% {}",
+        " ".repeat(progress_padding.saturating_sub(23)),
         "ram".green(),
         ram_usage,
         draw_progress(ram_usage, 14)
     );
     println!(
-        "{}{} {:>2 }% {}",
-        " ".repeat(progress_padding.saturating_sub(10)),
+        "{}{} {:>2}% {}",
+        " ".repeat(progress_padding.saturating_sub(23)),
         "disk".green(),
         disk_usage,
         draw_progress(disk_usage, 14)
@@ -152,7 +150,7 @@ fn format_system_info(items: Vec<(&str, String)>) -> Vec<String> {
         .map(|(label, value)| {
             format!(
                 "{} {: >width$} {} {}",
-                "                    ",
+                " ".repeat(10),
                 label,
                 "•".green(),
                 value,
