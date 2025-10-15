@@ -70,9 +70,9 @@ pub fn run_challenge_countdown(years: i64, months: i64) {
     let now_dt: DateTime<Utc> = SystemTime::now().into();
 
     // Calculate the target date
-    let target_days_in_years = Duration::days(365 * years);
-    let total_days_in_months = (months as f64 * 30.44).round() as i64;
-    let total_challenge_days = target_days_in_years.num_days() + total_days_in_months;
+    let days_from_years = 365 * years;
+    let days_from_months = (months as f64 * 30.44).round() as i64;
+    let total_challenge_days = days_from_years + days_from_months;
     let target_dt = install_dt + Duration::days(total_challenge_days);
 
     let mut goal_string = String::new();

@@ -5,8 +5,8 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use libmacchina::{
-    traits::{GeneralReadout as _, PackageReadout as _, ShellFormat, ShellKind},
     GeneralReadout, PackageReadout,
+    traits::{GeneralReadout as _, PackageReadout as _, ShellFormat, ShellKind},
 };
 use std::fs;
 use std::io;
@@ -14,8 +14,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{Disks, System};
-use viuer::{print_from_file, Config};
-
+use viuer::{Config, print_from_file};
 mod challenge;
 
 #[derive(Parser)]
@@ -67,7 +66,7 @@ fn run_fetch() -> io::Result<()> {
     execute!(io::stdout(), cursor::MoveTo(0, 0))?;
 
     // Get distro first for logo selection
-    let distro = get_distro();
+    let distro = get_os_name();
 
     // Get system info
     let name = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
@@ -242,11 +241,9 @@ fn get_colorbar() -> String {
     bar
 }
 
-fn get_distro() -> String {
+fn get_os_name() -> String {
     let general = GeneralReadout::new();
-    general
-        .distribution()
-        .unwrap_or_else(|_| "Unknown".to_string())
+    general.os_name().unwrap_or_else(|_| "Unknown".to_string())
 }
 
 fn get_logo_path(distro: &str) -> PathBuf {
