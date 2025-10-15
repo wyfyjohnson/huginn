@@ -8,7 +8,7 @@ fn visual_width(s: &str) -> usize {
 }
 
 fn format_challenge_box(items: Vec<(&str, String)>) -> String {
-    let padding_left = " ".repeat(20);
+    let padding_left = " ".repeat(10);
     // Find width of longest label to align dot separators
     let max_label_width = items
         .iter()
@@ -31,7 +31,8 @@ fn format_challenge_box(items: Vec<(&str, String)>) -> String {
     // Find width of longest formatted line to draw the box
     let max_content_width = formatted_lines
         .iter()
-        .map(|s| visual_width(s))
+        // .map(|s| visual_width(s))
+        .map(|s| s.chars().filter(|c| !c.is_control()).count())
         .max()
         .unwrap_or(0);
 
@@ -42,15 +43,19 @@ fn format_challenge_box(items: Vec<(&str, String)>) -> String {
 
     output.push_str(&format!("{}{}\n", padding_left, top_border));
 
-    for line in formatted_lines {
-        let line_padding_right = " ".repeat(max_content_width - visual_width(&line));
+    for line in &formatted_lines {
+        let visual_len = line.chars().filter(|c| !c.is_control()).count();
+        let padding_needed = max_content_width.saturating_sub(visual_len);
+
         output.push_str(&format!(
-            "{}│ {}{} │\n",
-            padding_left, line, line_padding_right
+            "{}| {}{} |\n",
+            padding_left,
+            line,
+            " ".repeat(padding_needed)
         ));
     }
 
-    output.push_str(&format!("{}{}\n", padding_left, bottom_border));
+    output.push_str(&format!("{}{}", padding_left, bottom_border));
     output
 }
 
@@ -67,7 +72,7 @@ pub fn run_challenge_countdown(years: i64, months: i64) {
     // Calculate the target date
     let target_days_in_years = Duration::days(365 * years);
     let total_days_in_months = (months as f64 * 30.44).round() as i64;
-    let total_challenge_days = total_days_in_years + total_days_in_months;
+    let total_challenge_days = target_days_in_years.num_days() + total_days_in_months;
     let target_dt = install_dt + Duration::days(total_challenge_days);
 
     let mut goal_string = String::new();

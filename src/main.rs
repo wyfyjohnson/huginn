@@ -31,7 +31,7 @@ enum Commands {
     /// Run a challenge countdown
     Challenge {
         /// Number of years for the challenge
-        #[arg(short, long, default_value_t = 0)]
+        #[arg(short, long, default_value_t = 2)]
         years: i64,
 
         /// Number of months for the challenge
