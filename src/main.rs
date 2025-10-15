@@ -5,8 +5,8 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use libmacchina::{
-    GeneralReadout, PackageReadout,
     traits::{GeneralReadout as _, PackageReadout as _, ShellFormat, ShellKind},
+    GeneralReadout, PackageReadout,
 };
 use std::fs;
 use std::io;
@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{Disks, System};
-use viuer::{Config, print_from_file};
+use viuer::{print_from_file, Config};
 mod challenge;
 
 #[derive(Parser)]
@@ -243,7 +243,9 @@ fn get_colorbar() -> String {
 
 fn get_os_name() -> String {
     let general = GeneralReadout::new();
-    general.os_name().unwrap_or_else(|_| "Unknown".to_string())
+    general
+        .distribution()
+        .unwrap_or_else(|_| general.os_name().unwrap_or_else(|_| "Unknown".to_string()))
 }
 
 fn get_logo_path(distro: &str) -> PathBuf {
