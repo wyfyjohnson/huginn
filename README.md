@@ -67,7 +67,20 @@ Simply run `huginn` in your terminal. There is currently no configuration file o
 
 Track your progress with the challenge countdown feature. By default, it challenges you to keep your system with the same installation for 2 years:
 ```bash
-huginn 
+huginn --challenge
+```
+
+Customize the challenge duration:
+```bash
+huginn --challenge --years 1 --months 6
+# short flags
+huginn -c -y 2 -m 3
+```
+
+Challenge flag displays:
+- Installation date
+- Current system age
+- Time remaining to reach your goal (or "Challenge Complete!" if you've made it)
 
 ## Troubleshooting
 
@@ -79,3 +92,8 @@ huginn
 
 Contributions are welcome! Feel free to submit pull requests for bug fixes, new distro logos, or other improvements. Please run `cargo fmt` to format your code before submitting.
 
+## To-Do
+- Add a configuration file
+- Add custom epoch for people that reinstall but are still on the same challenge
+- Add a progress bar for challenge
+- Maybe center the logo and greeting when the challenge flag is invoked
