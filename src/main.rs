@@ -42,43 +42,69 @@ enum Commands {
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
-    // Handle subcommands
-    if let Some(command) = cli.command {
-        match command {
-            Commands::Challenge { years, months } => {
-                challenge::run_challenge_countdown(years, months);
-                return Ok(());
-            }
-        }
-    }
-
-    // If no subcommand, run the normal fetch display
-    run_fetch()?;
-    Ok(())
-}
-
-fn run_fetch() -> io::Result<()> {
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
     // Clear screen
     execute!(io::stdout(), Clear(ClearType::All))?;
     execute!(io::stdout(), cursor::MoveTo(0, 0))?;
 
-    // Get distro first for logo selection
-    let distro = get_os_name();
+    if cli.command.is_some() {
+        draw_outer_box()?;
+        execute!(io::stdout(), cursor::MoveTo(4, 2))?;
+        use std::io::Write;
+        std::io::stdout().flush()?;
+    }
 
-    // Get system info
+    // Run normal fetch (with offset if in box)
+    run_fetch_internal(cli.command.is_some())?;
+
+    // Add challenge box if needed
+    if let Some(Commands::Challenge { years, months }) = cli.command {
+        challenge::run_challenge_countdown(years, months);
+    }
+
+    Ok(())
+}
+
+fn draw_outer_box() -> io::Result<()> {
+    let box_width = 100;
+    let box_height = 45;
+
+    // Top border
+    execute!(io::stdout(), cursor::MoveTo(2, 1))?;
+    print!("╭{}╮", "─".repeat(box_width));
+
+    // Side borders
+    for row in 2..=(box_height + 1) {
+        execute!(io::stdout(), cursor::MoveTo(2, row as u16))?;
+        print!("│");
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((box_width + 3) as u16, row as u16)
+        )?;
+        print!("│");
+    }
+
+    // Bottom border
+    execute!(io::stdout(), cursor::MoveTo(2, (box_height + 2) as u16))?;
+    print!("╰{}╯", "─".repeat(box_width));
+
+    Ok(())
+}
+
+fn run_fetch_internal(in_box: bool) -> io::Result<()> {
+    let offset_x = if in_box { 4 } else { 0 };
+
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let distro = get_os_name();
     let name = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
     let package_count = get_package_count();
     let wm = get_window_manager();
-    let _storage = get_storage_used();
     let term = get_terminal();
     let uptime = format_uptime(System::uptime());
     let age_val = get_system_age();
     let kernel = System::kernel_version().unwrap_or_default();
 
-    // Build the main info block
     let info_items = vec![
         ("distro", distro.clone()),
         ("age", age_val),
@@ -90,14 +116,12 @@ fn run_fetch() -> io::Result<()> {
     ];
 
     let info_lines = format_system_info(info_items);
-
     let first_line = &info_lines[0];
     let dot_position = first_line.find('•').unwrap_or(20);
     let visual_center = dot_position.saturating_sub(10);
 
-    display_logo(&distro, visual_center);
+    display_logo(&distro, visual_center + offset_x);
 
-    // CPU, RAM, DISK usage
     let cpu_usage = sys.global_cpu_usage() as i32;
     let ram_usage = ((sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0) as i32;
     let disk_usage = get_disk_usage();
@@ -105,58 +129,131 @@ fn run_fetch() -> io::Result<()> {
     let colorbar = get_colorbar();
     let colorbar_width = 24;
     let colorbar_padding = visual_center.saturating_sub(colorbar_width / 2);
-    println!("\n{}{}", " ".repeat(colorbar_padding), colorbar);
-    println!();
 
-    let greeting_text = format!("Hi! {}", name);
-    let greeting_width = greeting_text.len();
-    let greeting_padding = visual_center.saturating_sub(greeting_width / 2);
-    println!(
-        "{}{} {}",
-        " ".repeat(greeting_padding),
-        "Hi!".cyan(),
-        name.green().bold()
-    );
+    if in_box {
+        // Use absolute positioning for everything
+        let mut row = 13;
 
-    let uptime_text = format!("up {}", uptime);
-    let uptime_width = uptime_text.len();
-    let uptime_padding = visual_center.saturating_sub(uptime_width / 2);
-    println!(
-        "{}{} {}",
-        " ".repeat(uptime_padding),
-        "up".yellow(),
-        uptime.cyan().bold()
-    );
-    println!();
+        // Colorbar
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((offset_x + colorbar_padding) as u16, row)
+        )?;
+        print!("{}", colorbar);
+        row += 2;
 
-    for line in info_lines {
-        println!("{}", line);
+        // Greeting
+        let greeting_padding = visual_center.saturating_sub(10);
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((offset_x + greeting_padding) as u16, row)
+        )?;
+        print!("{} {}", "Hi!".cyan(), name.green().bold());
+        row += 1;
+
+        // Uptime
+        let uptime_padding = visual_center.saturating_sub(10);
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((offset_x + uptime_padding) as u16, row)
+        )?;
+        print!("{} {}", "up".yellow(), uptime.cyan().bold());
+        row += 2;
+
+        // System info
+        for line in info_lines {
+            execute!(io::stdout(), cursor::MoveTo(offset_x as u16, row))?;
+            print!("{}", line);
+            row += 1;
+        }
+        row += 1;
+
+        // Progress bars
+        let progress_padding = dot_position + 2;
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((offset_x + progress_padding.saturating_sub(23)) as u16, row)
+        )?;
+        print!(
+            "{}  {:>2}% {}",
+            "cpu".green(),
+            cpu_usage,
+            draw_progress(cpu_usage, 14)
+        );
+        row += 1;
+
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((offset_x + progress_padding.saturating_sub(23)) as u16, row)
+        )?;
+        print!(
+            "{}  {:>2}% {}",
+            "ram".green(),
+            ram_usage,
+            draw_progress(ram_usage, 14)
+        );
+        row += 1;
+
+        execute!(
+            io::stdout(),
+            cursor::MoveTo((offset_x + progress_padding.saturating_sub(23)) as u16, row)
+        )?;
+        print!(
+            "{} {:>2}% {}",
+            "disk".green(),
+            disk_usage,
+            draw_progress(disk_usage, 14)
+        );
+    } else {
+        // Normal mode: use println!
+        println!("\n{}{}", " ".repeat(colorbar_padding + offset_x), colorbar);
+        println!();
+
+        let greeting_padding = visual_center.saturating_sub(10);
+        println!(
+            "{}{} {}",
+            " ".repeat(greeting_padding + offset_x),
+            "Hi!".cyan(),
+            name.green().bold()
+        );
+
+        let uptime_padding = visual_center.saturating_sub(10);
+        println!(
+            "{}{} {}",
+            " ".repeat(uptime_padding + offset_x),
+            "up".yellow(),
+            uptime.cyan().bold()
+        );
+        println!();
+
+        for line in info_lines {
+            println!("{}{}", " ".repeat(offset_x), line);
+        }
+        println!();
+
+        let progress_padding = dot_position + 2;
+        println!(
+            "{}{}  {:>2}% {}",
+            " ".repeat(offset_x + progress_padding.saturating_sub(23)),
+            "cpu".green(),
+            cpu_usage,
+            draw_progress(cpu_usage, 14)
+        );
+        println!(
+            "{}{}  {:>2}% {}",
+            " ".repeat(offset_x + progress_padding.saturating_sub(23)),
+            "ram".green(),
+            ram_usage,
+            draw_progress(ram_usage, 14)
+        );
+        println!(
+            "{}{} {:>2}% {}",
+            " ".repeat(offset_x + progress_padding.saturating_sub(23)),
+            "disk".green(),
+            disk_usage,
+            draw_progress(disk_usage, 14)
+        );
     }
-    println!();
-
-    // Progress bars
-    let progress_padding = dot_position + 2;
-    println!(
-        "{}{}  {:>2}% {}",
-        " ".repeat(progress_padding.saturating_sub(23)),
-        "cpu".green(),
-        cpu_usage,
-        draw_progress(cpu_usage, 14)
-    );
-    println!(
-        "{}{}  {:>2}% {}",
-        " ".repeat(progress_padding.saturating_sub(23)),
-        "ram".green(),
-        ram_usage,
-        draw_progress(ram_usage, 14)
-    );
-    println!(
-        "{}{} {:>2}% {}",
-        " ".repeat(progress_padding.saturating_sub(23)),
-        "disk".green(),
-        disk_usage,
-        draw_progress(disk_usage, 14)
-    );
 
     Ok(())
 }
@@ -380,20 +477,6 @@ fn get_window_manager() -> String {
     general
         .window_manager()
         .unwrap_or_else(|_| "Unknown".to_string())
-}
-
-fn get_storage_used() -> String {
-    Command::new("df")
-        .args(&["-h", "--output=used", "/"])
-        .output()
-        .ok()
-        .and_then(|output| {
-            String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .nth(1)
-                .map(|s| s.trim().to_string())
-        })
-        .unwrap_or_else(|| "0G".to_string())
 }
 
 fn get_terminal() -> String {
