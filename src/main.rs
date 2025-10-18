@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use crossterm::{
     cursor, execute,
     style::Stylize,
@@ -21,22 +21,15 @@ mod challenge;
 #[command(name = "huginn")]
 #[command(about = "A beautiful system information fetcher", long_about = None)]
 struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
+    #[arg(short, long)]
+    challenge: bool,
+    /// Number of years for the challenge
+    #[arg(long, default_value_t = 2)]
+    years: i64,
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Run a challenge countdown
-    Challenge {
-        /// Number of years for the challenge
-        #[arg(short, long, default_value_t = 2)]
-        years: i64,
-
-        /// Number of months for the challenge
-        #[arg(short, long, default_value_t = 0)]
-        months: i64,
-    },
+    /// Number of months for the challenge
+    #[arg(long, default_value_t = 0)]
+    months: i64,
 }
 
 fn main() -> io::Result<()> {
@@ -47,16 +40,14 @@ fn main() -> io::Result<()> {
     execute!(io::stdout(), cursor::MoveTo(0, 0))?;
 
     // Run normal fetch (with offset if in box)
-    run_fetch_internal(cli.command.is_some())?;
+    run_fetch_internal(cli.challenge)?;
 
     // Add challenge box if needed
-    if let Some(Commands::Challenge { years, months }) = &cli.command {
-        challenge::run_challenge_countdown(*years, *months);
-
+    if cli.challenge {
+        challenge::run_challenge_countdown(cli.years, cli.months);
         draw_outer_box()?;
         println!();
     }
-
     Ok(())
 }
 

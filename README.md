@@ -6,12 +6,14 @@ Displays your system stats with distro-specific logos and a clean, colorful inte
 ![Huginn Screenshot](screenshot.png)
 
 ## Features
-- **Beautiful UI** - not so smoov color gradients
+- **Beautiful UI** - Clean color gradient and progess bars.
 - **Distro Logos** - SVG logos for popular GNU+Linux distributions
 - **Fast** - written in Rust for minimal overhead
 - **Multiple Terminal Protocols** - works with multiple interfaces
 - **Theme-Aware** - I did my best to not just make it Catppuccin
 - **Package Manager Detection** - Counts packages as best as it can regardless of package manager
+- **Challenge Flag** - Track your OS challenge, default 2 years
+- **System Metrics** - CPU, RAM and disk usage with progress bars
 
 ## Installation
 
@@ -62,6 +64,10 @@ Huginn requires you to add SVG logos to display them.
 
 ## Usage/Configuration
 Simply run `huginn` in your terminal. There is currently no configuration file or command-line flags.
+
+Track your progress with the challenge countdown feature. By default, it challenges you to keep your system with the same installation for 2 years:
+```bash
+huginn 
 
 ## Troubleshooting
 
