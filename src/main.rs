@@ -46,27 +46,23 @@ fn main() -> io::Result<()> {
     execute!(io::stdout(), Clear(ClearType::All))?;
     execute!(io::stdout(), cursor::MoveTo(0, 0))?;
 
-    if cli.command.is_some() {
-        draw_outer_box()?;
-        execute!(io::stdout(), cursor::MoveTo(4, 2))?;
-        use std::io::Write;
-        std::io::stdout().flush()?;
-    }
-
     // Run normal fetch (with offset if in box)
     run_fetch_internal(cli.command.is_some())?;
 
     // Add challenge box if needed
-    if let Some(Commands::Challenge { years, months }) = cli.command {
-        challenge::run_challenge_countdown(years, months);
+    if let Some(Commands::Challenge { years, months }) = &cli.command {
+        challenge::run_challenge_countdown(*years, *months);
+
+        draw_outer_box()?;
+        println!();
     }
 
     Ok(())
 }
 
 fn draw_outer_box() -> io::Result<()> {
-    let box_width = 100;
-    let box_height = 45;
+    let box_width = 85;
+    let box_height = 28;
 
     // Top border
     execute!(io::stdout(), cursor::MoveTo(2, 1))?;
@@ -161,7 +157,7 @@ fn run_fetch_internal(in_box: bool) -> io::Result<()> {
         row += 2;
 
         // System info
-        for line in info_lines {
+        for line in &info_lines {
             execute!(io::stdout(), cursor::MoveTo(offset_x as u16, row))?;
             print!("{}", line);
             row += 1;
@@ -204,6 +200,9 @@ fn run_fetch_internal(in_box: bool) -> io::Result<()> {
             disk_usage,
             draw_progress(disk_usage, 14)
         );
+
+        use std::io::Write;
+        std::io::stdout().flush()?;
     } else {
         // Normal mode: use println!
         println!("\n{}{}", " ".repeat(colorbar_padding + offset_x), colorbar);
@@ -397,15 +396,14 @@ fn svg_to_png_temp(svg_path: &PathBuf, width: u32, height: u32) -> Option<PathBu
 
 fn display_logo(distro: &str, dot_position: usize) {
     let svg_path = get_logo_path(distro);
-
     let logo_x = (dot_position as u16).saturating_sub(10);
 
     let conf = Config {
         width: Some(20),
         height: Some(10),
         x: logo_x,
-        y: 1,
-        absolute_offset: false,
+        y: 3,
+        absolute_offset: true,
         transparent: true,
         ..Default::default()
     };
