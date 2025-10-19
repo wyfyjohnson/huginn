@@ -24,11 +24,11 @@ struct Cli {
     #[arg(short, long)]
     challenge: bool,
     /// Number of years for the challenge
-    #[arg(long, default_value_t = 2)]
+    #[arg(short, long, default_value_t = 2)]
     years: i64,
 
     /// Number of months for the challenge
-    #[arg(long, default_value_t = 0)]
+    #[arg(short, long, default_value_t = 0)]
     months: i64,
 }
 
@@ -105,45 +105,49 @@ fn run_fetch_internal(in_box: bool) -> io::Result<()> {
     let info_lines = format_system_info(info_items);
     let first_line = &info_lines[0];
     let dot_position = first_line.find('•').unwrap_or(20);
-    let visual_center = dot_position.saturating_sub(10);
 
-    display_logo(&distro, visual_center + offset_x);
+    let visual_center = if in_box {
+        44 // box width is 85, and starts at x=2
+    } else {
+        dot_position.saturating_sub(10)
+    };
+
+    display_logo(&distro, visual_center);
 
     let cpu_usage = sys.global_cpu_usage() as i32;
     let ram_usage = ((sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0) as i32;
     let disk_usage = get_disk_usage();
 
     let colorbar = get_colorbar();
-    let colorbar_width = 24;
-    let colorbar_padding = visual_center.saturating_sub(colorbar_width / 2);
+    let colorbar_width = 25;
+    let colorbar_padding = if in_box {
+        visual_center.saturating_sub(colorbar_width / 2)
+    } else {
+        visual_center.saturating_sub(colorbar_width / 2)
+    };
 
     if in_box {
         // Use absolute positioning for everything
         let mut row = 13;
 
         // Colorbar
-        execute!(
-            io::stdout(),
-            cursor::MoveTo((offset_x + colorbar_padding) as u16, row)
-        )?;
+        execute!(io::stdout(), cursor::MoveTo(colorbar_padding as u16, row))?;
         print!("{}", colorbar);
         row += 2;
 
         // Greeting
-        let greeting_padding = visual_center.saturating_sub(10);
-        execute!(
-            io::stdout(),
-            cursor::MoveTo((offset_x + greeting_padding) as u16, row)
-        )?;
+        let greeting_text = format!("Hi! {}", name);
+        let greeting_width = greeting_text.len();
+        let greeting_padding = visual_center.saturating_sub(greeting_width / 2);
+        execute!(io::stdout(), cursor::MoveTo(greeting_padding as u16, row))?;
         print!("{} {}", "Hi!".cyan(), name.green().bold());
         row += 1;
 
         // Uptime
-        let uptime_padding = visual_center.saturating_sub(10);
-        execute!(
-            io::stdout(),
-            cursor::MoveTo((offset_x + uptime_padding) as u16, row)
-        )?;
+        let uptime_text = format!("up {}", uptime);
+        let uptime_width = uptime_text.len();
+        let uptime_padding = visual_center.saturating_sub(uptime_width / 2);
+        execute!(io::stdout(), cursor::MoveTo(uptime_padding as u16, row))?;
         print!("{} {}", "up".yellow(), uptime.cyan().bold());
         row += 2;
 
@@ -199,7 +203,10 @@ fn run_fetch_internal(in_box: bool) -> io::Result<()> {
         println!("\n{}{}", " ".repeat(colorbar_padding + offset_x), colorbar);
         println!();
 
-        let greeting_padding = visual_center.saturating_sub(10);
+        // greeting
+        let greeting_text = format!("Hi! {}", name);
+        let greeting_width = greeting_text.len();
+        let greeting_padding = visual_center.saturating_sub(greeting_width / 2);
         println!(
             "{}{} {}",
             " ".repeat(greeting_padding + offset_x),
@@ -207,7 +214,10 @@ fn run_fetch_internal(in_box: bool) -> io::Result<()> {
             name.green().bold()
         );
 
-        let uptime_padding = visual_center.saturating_sub(10);
+        // uptime
+        let uptime_text = format!("up {}", uptime);
+        let uptime_width = uptime_text.len();
+        let uptime_padding = visual_center.saturating_sub(uptime_width / 2);
         println!(
             "{}{} {}",
             " ".repeat(uptime_padding + offset_x),
@@ -288,7 +298,7 @@ fn format_system_info(items: Vec<(&str, String)>) -> Vec<String> {
 
 fn get_colorbar() -> String {
     use crossterm::style::Stylize;
-    let first_blocks = ["░", "▒"];
+    let first_blocks = ["░", "▒", "▓"];
     let middle_blocks = ["▓", "▒"];
     let last_blocks = ["▒", "░"];
     let mut bar = String::new();
