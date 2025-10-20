@@ -5,8 +5,8 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use libmacchina::{
-    traits::{GeneralReadout as _, PackageReadout as _, ShellFormat, ShellKind},
     GeneralReadout, PackageReadout,
+    traits::{GeneralReadout as _, PackageReadout as _, ShellFormat, ShellKind},
 };
 use std::fs;
 use std::io;
@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{Disks, System};
-use viuer::{print_from_file, Config};
+use viuer::{Config, print_from_file};
 mod challenge;
 
 #[derive(Parser)]
@@ -359,6 +359,7 @@ fn get_logo_path(distro: &str) -> PathBuf {
         d if d.contains("gentoo") => "gentoo.svg",
         d if d.contains("guix") => "guix.svg",
         d if d.contains("lmde") => "lmde.svg",
+        d if d.contains("macos") => "macos.svg",
         d if d.contains("manjaro") => "manjaro.svg",
         d if d.contains("mint") => "mint.svg",
         d if d.contains("nixos") => "nixos.svg",
@@ -366,6 +367,7 @@ fn get_logo_path(distro: &str) -> PathBuf {
         d if d.contains("popos") => "popos.svg",
         d if d.contains("ubuntu") => "ubuntu.svg",
         d if d.contains("venom") => "venom.svg",
+        d if d.contains("windows") => "windows.svg",
         _ => "linux.svg",
     };
 
