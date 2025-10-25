@@ -1,25 +1,10 @@
+use crate::{draw_progress, ProgressColorScheme};
 use chrono::{DateTime, Duration, Utc};
 use crossterm::style::Stylize;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn draw_challenge_progress(percentage: i32, size: usize) -> String {
-    let filled = (percentage * size as i32 / 100) as usize;
-    let full = "━".repeat(filled);
-    let empty = "━".repeat(size.saturating_sub(filled));
-
-    let colored_full = match percentage {
-        90..=100 => full.green(),
-        70..=89 => full.dark_green(),
-        50..=69 => full.dark_yellow(),
-        30..=49 => full.dark_cyan(),
-        _ => full.cyan(),
-    };
-
-    format!("{}{}", colored_full, empty.dark_grey())
-}
-
-pub fn run_challenge_countdown(years: i64, months: i64) {
+pub fn run_challenge_countdown(years: i64, months: i64) -> u16 {
     use crossterm::{cursor, execute};
     use std::io;
 
@@ -89,6 +74,7 @@ pub fn run_challenge_countdown(years: i64, months: i64) {
     print!(
         "{:>3}% {}",
         progress_percentage,
-        draw_challenge_progress(progress_percentage, 14)
+        draw_progress(progress_percentage, 14, ProgressColorScheme::Challenge)
     );
+    current_row
 }
