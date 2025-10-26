@@ -73,6 +73,12 @@ pub struct ChallengeConfig {
 pub struct LogoConfig {
     #[serde(default)]
     pub custom_path: String,
+
+    #[serde(default)]
+    pub width: Option<u32>,
+
+    #[serde(default)]
+    pub height: Option<u32>,
 }
 
 /// Configuration for custom scripts
@@ -146,6 +152,8 @@ impl Default for LogoConfig {
     fn default() -> Self {
         Self {
             custom_path: String::new(),
+            width: None,
+            height: None,
         }
     }
 }
@@ -163,24 +171,51 @@ impl Default for ScriptsConfig {
 
 impl Config {
     /// Load configuration from the standard config file location
-    /// Falls back to defaults if config doesn't exist or has errors
+    /// Automatically creates default config on first run
+    /// Falls back to defaults if config has errors
     pub fn load() -> Self {
-        // Try to find config file
+        // Try to find existing config file
         if let Some(config_path) = Self::find_config_file() {
-            // Try to read and parse it
+            // Config exists, try to read and parse it
             if let Ok(contents) = fs::read_to_string(&config_path) {
                 if let Ok(config) = toml::from_str::<Config>(&contents) {
                     return config;
                 } else {
-                    eprintln!("Warning: Failed to parse config file, using defaults");
+                    eprintln!(
+                        "Warning: Failed to parse config file at {}",
+                        config_path.display()
+                    );
+                    eprintln!("Run 'huginn --generate-config' to reset it, or fix the syntax.");
+                    eprintln!("Using default configuration for now.");
                 }
             }
+        } else {
+            // Config doesn't exist - this is first run!
+            Self::create_default_config_silently();
         }
 
-        // Return defaults if anything failed
+        // Return defaults if config doesn't exist or failed to parse
         Config::default()
     }
 
+    /// Silently create default config on first run
+    fn create_default_config_silently() {
+        if let Ok(home) = std::env::var("HOME") {
+            let config_path = PathBuf::from(format!("{}/.config/huginn/config.toml", home));
+
+            // Only create if it truly doesn't exist
+            if !config_path.exists() {
+                let default_config = Config::default();
+
+                if let Err(e) = default_config.save(&config_path) {
+                    // Only show error if creation failed
+                    eprintln!("Note: Could not create config file: {}", e);
+                    eprintln!("Huginn will use defaults. You can manually run:");
+                    eprintln!("  huginn --generate-config");
+                }
+            }
+        }
+    }
     /// Find the config file in standard locations
     /// Checks in order: ~/.config/huginn/config.toml, ~/.huginn.toml
     fn find_config_file() -> Option<PathBuf> {

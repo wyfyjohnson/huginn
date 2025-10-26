@@ -4,7 +4,7 @@ use crossterm::style::Stylize;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn run_challenge_countdown(years: i64, months: i64) -> u16 {
+pub fn run_challenge_countdown(years: i64, months: i64, start_row: u16) -> u16 {
     use crossterm::{cursor, execute};
     use std::io;
 
@@ -53,7 +53,7 @@ pub fn run_challenge_countdown(years: i64, months: i64) -> u16 {
         .unwrap_or(0);
 
     let padding_left = 50;
-    let mut current_row = 20;
+    let mut current_row = start_row;
 
     for (label, value) in info_items {
         let _ = execute!(io::stdout(), cursor::MoveTo(padding_left, current_row));

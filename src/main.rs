@@ -13,7 +13,7 @@ mod challenge;
 mod config;
 mod system_info;
 
-use config::Config;
+use config::{Config, LogoConfig};
 use system_info::SystemInfo;
 
 #[derive(Parser)]
@@ -74,6 +74,15 @@ enum ProgressColorScheme {
     Challenge,
 }
 
+fn expand_home(path: &str) -> String {
+    if path.starts_with("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return path.replacen("~", &home, 1);
+        }
+    }
+    path.to_string()
+}
+
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
 
@@ -113,12 +122,12 @@ fn main() -> io::Result<()> {
     execute!(io::stdout(), cursor::MoveTo(0, 0))?;
 
     // Run normal fetch (with offset if in box)
-    let content_height = run_fetch_internal(in_challenge_mode, &config)?;
+    let (content_height, second_info_row) = run_fetch_internal(in_challenge_mode, &config)?;
 
     // Add challenge box if needed
     if in_challenge_mode {
         let challenge_end_row =
-            challenge::run_challenge_countdown(challenge_years, challenge_months);
+            challenge::run_challenge_countdown(challenge_years, challenge_months, second_info_row);
         let total_height = content_height.max(challenge_end_row) + 1;
         draw_outer_box(total_height)?;
         println!();
@@ -221,7 +230,7 @@ fn display_progress_bars(
     Ok(())
 }
 
-fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<u16> {
+fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<(u16, u16)> {
     let offset_x = if in_box { 4 } else { 0 };
 
     let mut sys = System::new_all();
@@ -260,11 +269,15 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<u16> {
     };
 
     // Use custom logo if configured, otherwise use distro logo
-    if !config.logo.custom_path.is_empty() {
-        display_custom_logo(&config.logo.custom_path, visual_center);
+    let logo_height = if !config.logo.custom_path.is_empty() {
+        let expand_path = expand_home(&config.logo.custom_path);
+        let height = config.logo.height.unwrap_or(18); // Default custom logo height
+        display_custom_logo(&expand_path, visual_center, &config.logo);
+        height
     } else {
         display_logo(&distro, visual_center);
-    }
+        10 // Default distro logo height
+    };
 
     let cpu_usage = sys.global_cpu_usage() as i32;
     let ram_usage = ((sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0) as i32;
@@ -276,7 +289,7 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<u16> {
 
     let final_row = if in_box {
         // Use absolute positioning for everything
-        let mut row = 13;
+        let mut row = 2 + logo_height as u16 + 2;
 
         // Colorbar
         execute!(io::stdout(), cursor::MoveTo(colorbar_padding as u16, row))?;
@@ -289,8 +302,13 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<u16> {
         row += 1;
 
         // System info
-        for line in &info_lines {
+        let mut second_info_row = 0;
+        for (idx, line) in info_lines.iter().enumerate() {
             ctx.print_line(Some(row), line)?;
+            if idx == 1 {
+                // Second line (index 1)
+                second_info_row = row;
+            }
             row += 1;
         }
         row += 1;
@@ -310,7 +328,7 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<u16> {
         // Keeps progress bar in box hopefully
         let content_end_row = row;
 
-        content_end_row
+        (content_end_row, second_info_row)
     } else {
         // Normal mode: use println!
         println!("\n{}{}", " ".repeat(colorbar_padding + offset_x), colorbar);
@@ -338,7 +356,7 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<u16> {
             &mut row,
         )?;
 
-        0 // return for normal
+        (0, 0) // return for normal
     };
 
     Ok(final_row)
@@ -523,14 +541,18 @@ fn display_logo(distro: &str, dot_position: usize) {
     }
 }
 
-fn display_custom_logo(image_path: &str, dot_position: usize) {
-    let logo_x = (dot_position as u16).saturating_sub(10);
+fn display_custom_logo(image_path: &str, dot_position: usize, logo_config: &LogoConfig) {
+    let default_width = logo_config.width.unwrap_or(35);
+    let logo_x = (dot_position as u16).saturating_sub((default_width / 2) as u16);
+
+    const DEFAULT_MAX_WIDTH: u32 = 35;
+    const DEFAULT_MAX_HEIGHT: u32 = 18;
 
     let conf = ViuerConfig {
-        width: Some(20),
-        height: Some(10),
+        width: Some(logo_config.width.unwrap_or(DEFAULT_MAX_WIDTH)),
+        height: Some(logo_config.height.unwrap_or(DEFAULT_MAX_HEIGHT)),
         x: logo_x,
-        y: 3,
+        y: 2,
         absolute_offset: true,
         transparent: true,
         ..Default::default()
