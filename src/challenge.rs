@@ -7,8 +7,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn run_challenge_countdown(years: i64, months: i64, start_row: u16) -> u16 {
     use crossterm::{cursor, execute};
     use std::io;
+    use std::path::Path;
 
-    let metadata = fs::metadata("/").ok();
+    // check for atomic system age
+    let path = if Path::new("/ostree").exists() {
+        "/ostree"
+    } else {
+        "/"
+    };
+    let metadata = fs::metadata(path).ok();
     let install_time = metadata
         .and_then(|m| m.modified().ok())
         .unwrap_or(UNIX_EPOCH);

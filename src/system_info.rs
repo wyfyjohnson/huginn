@@ -111,7 +111,16 @@ fn get_os_name() -> String {
 }
 
 fn get_system_age() -> String {
-    let metadata = fs::metadata("/").ok();
+    use std::path::Path;
+
+    // Find age for atomic systems
+    let path = if Path::new("/ostree").exists() {
+        "/ostree"
+    } else {
+        "/"
+    };
+
+    let metadata = fs::metadata(path).ok();
     let install_time = metadata
         .and_then(|m| m.modified().ok())
         .unwrap_or(std::time::UNIX_EPOCH);
