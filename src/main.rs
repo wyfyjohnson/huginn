@@ -262,7 +262,7 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<(u16, u16)> {
     let visual_center = if in_box {
         44 // box width is 85, and starts at x=2
     } else {
-        dot_position.saturating_sub(10)
+        dot_position
     };
 
     // Create display context
@@ -335,32 +335,55 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<(u16, u16)> {
         (content_end_row, second_info_row)
     } else {
         // Normal mode: use println!
-        println!("\n{}{}", " ".repeat(colorbar_padding + offset_x), colorbar);
+        let logo_padding = dot_position.saturating_sub(10);
+
+        // Logo (if custom) or distro logo would have been displayed earlier
+        // Colorbar aligned with dot position
+        println!("\n{}{}", " ".repeat(logo_padding), colorbar);
         println!();
 
-        // Greeting and uptime
-        let mut row = 0; // Not used in non-box mode but needed for function signature
-        display_greeting(&ctx, &name, &mut row)?;
-        display_uptime(&ctx, &uptime, &mut row)?;
+        // Greeting and uptime - centered around dot position
+        let greeting_visual_width = 4 + name.len();
+        let greeting = format!("{} {}", "Hi!".green(), name.cyan().bold());
+        let greeting_padding = dot_position.saturating_sub(greeting_visual_width / 2);
+        println!("{}{}", " ".repeat(greeting_padding), greeting);
+
+        let uptime_text = format!("up {}", uptime);
+        let uptime_visual_width = uptime_text.len();
+        let uptime_padding = dot_position.saturating_sub(uptime_visual_width / 2);
+        println!(
+            "{}{} {}",
+            " ".repeat(uptime_padding),
+            "up".yellow(),
+            uptime.cyan().bold()
+        );
         println!();
 
-        // System info
-        for line in info_lines {
-            ctx.print_line(None, &line)?;
+        // System info (already aligned with dots)
+        for line in &info_lines {
+            println!("{}", line);
         }
         println!();
 
-        // Progress bars
-        display_progress_bars(
-            &ctx,
-            cpu_usage,
-            ram_usage,
-            disk_usage,
-            dot_position,
-            &mut row,
-        )?;
+        // Progress bars - aligned with dot position
+        let items = vec![
+            ("cpu", cpu_usage, "  "),
+            ("ram", ram_usage, "  "),
+            ("disk", disk_usage, " "),
+        ];
+        for (label, value, spacing) in items {
+            let text = format!(
+                "{}{}{:>2}% {}",
+                label.green(),
+                spacing,
+                value,
+                draw_progress(value, 14, ProgressColorScheme::System)
+            );
+            let progress_padding = dot_position.saturating_sub(11); // Adjust for left alignment
+            println!("{}{}", " ".repeat(progress_padding), text);
+        }
 
-        (0, 0) // return for normal
+        (0, 0) // return for normal mode
     };
 
     Ok(final_row)
