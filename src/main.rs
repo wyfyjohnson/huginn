@@ -126,8 +126,12 @@ fn main() -> io::Result<()> {
 
     // Add challenge box if needed
     if in_challenge_mode {
-        let challenge_end_row =
-            challenge::run_challenge_countdown(challenge_years, challenge_months, second_info_row);
+        let challenge_end_row = challenge::run_challenge_countdown(
+            challenge_years,
+            challenge_months,
+            second_info_row,
+            &config.display,
+        );
         let total_height = content_height.max(challenge_end_row) + 1;
         draw_outer_box(total_height)?;
         println!();
@@ -241,7 +245,7 @@ fn run_fetch_internal(in_box: bool, config: &Config) -> io::Result<(u16, u16)> {
 
     // Collect all system info
     let mut sys_info = SystemInfo::new();
-    sys_info.collect_all();
+    sys_info.collect_all(&config.display);
 
     // Convert to info_items, excluding age in box mode
     let info_items = sys_info.to_info_items(!in_box, &config.display);
@@ -401,7 +405,7 @@ fn format_system_info(items: Vec<(&str, String)>) -> Vec<String> {
                 "{} {: >width$} {} {}",
                 " ".repeat(10),
                 label,
-                "•".green(),
+                " ".green(),
                 value,
                 width = max_label_width
             )

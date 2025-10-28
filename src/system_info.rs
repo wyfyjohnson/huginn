@@ -2,6 +2,7 @@ use crate::config::DisplayConfig;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::thread;
 use sysinfo::System;
 
 pub struct SystemInfo {
@@ -35,18 +36,34 @@ impl SystemInfo {
         }
     }
 
-    pub fn collect_all(&mut self) {
+    pub fn collect_all(&mut self, display_config: &DisplayConfig) {
+        let pkg_handle = thread::spawn(|| get_package_count());
+        let gpu_handle = thread::spawn(|| get_gpu());
+        let theme_handle = thread::spawn(|| get_theme());
+        let term_handle = thread::spawn(|| get_terminal());
+        let nix_handle = thread::spawn(|| get_nix_generation());
+
         self.distro = Some(get_os_name());
-        self.age = Some(get_system_age());
+
+        // Use custom install date if provided, otherwise use filesystem
+        self.age = if let Some(ref custom_date) = display_config.custom_install_date {
+            calculate_days_from_date(custom_date)
+                .ok()
+                .map(|days| format!("{} days", days))
+                .or_else(|| Some(get_system_age()))
+        } else {
+            Some(get_system_age())
+        };
+
         self.kernel = System::kernel_version();
-        self.packages = Some(get_package_count());
+        self.packages = Some(pkg_handle.join().unwrap());
         self.shell = Some(get_shell());
-        self.term = Some(get_terminal());
+        self.term = Some(term_handle.join().unwrap());
         self.wm = Some(get_window_manager());
         self.cpu = get_cpu_model();
-        self.gpu = get_gpu();
-        self.theme = get_theme();
-        self.nix = get_nix_generation();
+        self.gpu = gpu_handle.join().unwrap();
+        self.theme = theme_handle.join().unwrap();
+        self.nix = nix_handle.join().unwrap();
     }
 
     // Helper to convert to vec of tuples for display
@@ -132,6 +149,15 @@ fn get_system_age() -> String {
     format!("{} days", days)
 }
 
+fn calculate_days_from_date(date_str: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    use chrono::NaiveDate;
+
+    let install_date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")?;
+    let today = chrono::Local::now().date_naive();
+
+    Ok((today - install_date).num_days())
+}
+
 fn get_package_count() -> String {
     use libmacchina::{traits::PackageReadout as _, PackageReadout};
     let packages = PackageReadout::new();
@@ -174,26 +200,24 @@ fn get_shell() -> String {
 }
 
 fn get_terminal() -> String {
-    if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
-        return match term_program.to_lowercase().as_str() {
-            "ghostty" => "Ghostty".to_string(),
-            "kitty" => "Kitty".to_string(),
-            "wezterm" => "Wezterm".to_string(),
-            "alacritty" => "Alacritty".to_string(),
-            "foot" => "󰽒".to_string(),
-            _ => term_program,
-        };
-    }
-
-    use libmacchina::{traits::GeneralReadout as _, GeneralReadout};
-    let general = GeneralReadout::new();
-    let term = general.terminal().unwrap_or_else(|_| "Unknown".to_string());
-
-    match term.as_str() {
-        t if t.contains("ghostty") => "Ghostty".to_string(),
-        t if t.contains("kitty") => "meow".to_string(),
-        _ => term,
-    }
+    std::env::var("TERMINAL")
+        .ok()
+        .or_else(|| {
+            let output = Command::new("ps")
+                .arg("-p")
+                .arg(std::process::id().to_string())
+                .output()
+                .ok()?;
+            let stdout_str = String::from_utf8_lossy(&output.stdout);
+            let line = stdout_str.lines().nth(1)?;
+            Some(
+                line.split_once(' ')
+                    .map(|_| "unknown")
+                    .unwrap_or_default()
+                    .to_string(),
+            )
+        })
+        .unwrap_or("unknown".to_string())
 }
 
 fn get_window_manager() -> String {

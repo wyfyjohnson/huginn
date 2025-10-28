@@ -24,6 +24,9 @@ pub struct DisplayConfig {
     #[serde(default = "default_mode")]
     pub mode: String, // "normal" or "challenge"
 
+    #[serde(default)]
+    pub custom_install_date: Option<String>,
+
     #[serde(default = "default_true")]
     pub distro: bool,
 
@@ -124,6 +127,7 @@ impl Default for DisplayConfig {
     fn default() -> Self {
         Self {
             mode: default_mode(),
+            custom_install_date: None,
             distro: true,
             age: true,
             kernel: true,

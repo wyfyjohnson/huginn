@@ -4,22 +4,43 @@ use crossterm::style::Stylize;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn run_challenge_countdown(years: i64, months: i64, start_row: u16) -> u16 {
-    use crossterm::{cursor, execute};
-    use std::io;
+use crate::config::DisplayConfig;
+
+fn get_install_time(display_config: &DisplayConfig) -> SystemTime {
     use std::path::Path;
 
-    // check for atomic system age
+    // Try custom date first
+    if let Some(ref custom_date) = display_config.custom_install_date {
+        if let Ok(install_date) = chrono::NaiveDate::parse_from_str(custom_date, "%Y-%m-%d") {
+            let datetime = install_date.and_hms_opt(0, 0, 0).unwrap();
+            let timestamp = datetime.and_utc().timestamp();
+            return UNIX_EPOCH + std::time::Duration::from_secs(timestamp as u64);
+        }
+    }
+
+    // Fall back to filesystem
     let path = if Path::new("/ostree").exists() {
         "/ostree"
     } else {
         "/"
     };
-    let metadata = fs::metadata(path).ok();
-    let install_time = metadata
-        .and_then(|m| m.modified().ok())
-        .unwrap_or(UNIX_EPOCH);
 
+    fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .unwrap_or(UNIX_EPOCH)
+}
+
+pub fn run_challenge_countdown(
+    years: i64,
+    months: i64,
+    start_row: u16,
+    display_config: &DisplayConfig,
+) -> u16 {
+    use crossterm::{cursor, execute};
+    use std::io;
+
+    let install_time = get_install_time(display_config);
     let install_dt: DateTime<Utc> = install_time.into();
     let now_dt: DateTime<Utc> = SystemTime::now().into();
 
@@ -67,7 +88,7 @@ pub fn run_challenge_countdown(years: i64, months: i64, start_row: u16) -> u16 {
         print!(
             "{: >width$} {} {}",
             label,
-            "•".green(),
+            " ".green(),
             value,
             width = max_label_width
         );
